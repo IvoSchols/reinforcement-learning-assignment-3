@@ -14,6 +14,7 @@ class ReinforceAgent(Agent):
         
 
     def optimize_model(self, state, action, next_state, reward, done, rewards):
+        # TODO: evaluate correctness of this function
         log_probs = torch.stack(log_probs)
         loss = -torch.mean(log_probs) * (sum(rewards) - 15)
         self.optimizer.zero_grad()
