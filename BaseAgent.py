@@ -8,7 +8,7 @@ from AgentNetwork import PolicyModel
 
 
 class Agent(ABC):
-    def __init__(self, env, device, optimizer='adam', lossFunction='huber'):
+    def __init__(self, env, device, optimizer='adam', lossFunction='huber', state_space= 98): #98 for 7x7 grid
         self.env = env
         self.device = device
         self.learning_rate = 1e-4
