@@ -31,7 +31,7 @@ class Round():
         M = 1000 # Number of traces generated for Monte Carlo
         eta = 0.1 # Learning rate
 
-        agent.net.randomize() # Randomize weights
+        self.agent.net.randomize() # Randomize weights
         state = self.env.reset()
         converged = False
         rewards = []
