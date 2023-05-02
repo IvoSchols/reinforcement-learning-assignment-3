@@ -3,14 +3,17 @@ import torch.nn as nn
 
 
 
-class PolicyModel(nn.Module):
+class ReinforceModel(nn.Module):
     def __init__(self,num_input):
-        super(PolicyModel,self).__init__()
+        super(ReinforceModel,self).__init__()
 
         self.layer1 = nn.Linear(num_input,64) # 98 for 7x7
         self.layer2 = nn.Linear(64,3) #3 actions
         
-    def forward(self, x):
-        x = torch.relu(self.layer1(x))
+    def forward(self, state):
+        x = torch.relu(self.layer1(state))
         x = self.layer2(x)
-        return torch.softmax(x, dim=-1)
+        actions = torch.softmax(x)
+        action = torch.multinomial(actions,1)
+        log_prob = torch.log(actions[action])
+        return action, log_prob

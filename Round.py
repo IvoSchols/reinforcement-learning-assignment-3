@@ -1,4 +1,5 @@
 
+import numpy as np
 from BaseAgent import Agent
 from catch import Catch
 
@@ -13,50 +14,63 @@ class Round():
         states = [state]
         actions = []
         rewards = []
+        log_probs = []
         done = False
 
         while not done:
-            action = self.agent.select_action(state)
+            action, log_prob = self.agent.select_action(state)
             next_state, reward, done, _ = self.env.step(action)
-            states.append(next_state)
-            actions.append(action)
             rewards.append(reward)
+            log_probs.append(log_prob)
             state = next_state
 
-        return states, actions, rewards
+        return rewards, log_probs
 
 
 
     def run(self):
         M = 1000 # Number of traces generated for Monte Carlo
-        eta = 0.1 # Learning rate
+        eta = 1 # Learning rate
 
         self.agent.net.randomize() # Randomize weights
-        state = self.env.reset()
         converged = False
-        rewards = []
+        all_rewards = []
+        discounted_rewards = []
         while not converged:
+            if True:
+                self.env.render()
+
             gradient = 0
+            state = self.env.reset()
+
             for m in range(M):
-                states, actions, rewards = self.sample_trace(state)
+                sample_rewards, sample_log_probs = self.sample_trace(state)
+                all_rewards.append(sum(sample_rewards))
                 
 
                 cumultative_reward = 0
 
-                for i in reversed(range(len(rewards))):
-                    cumultative_reward = cumultative_reward * self.agent.gamma + rewards[i]
-                    log_probs = self.agent.net(states[i])
+                for i in reversed(range(len(sample_rewards))):
+                    cumultative_reward = cumultative_reward * self.agent.gamma + sample_rewards[i]
+                    log_probs = sample_log_probs[i]
                     gradient += cumultative_reward * log_probs
-
+                
+                discounted_rewards.append(cumultative_reward)
 
             # Update weights
-            self.agent.optimize_model(eta * gradient)
+            discounted_rewards = np.array(discounted_rewards)
+            discounted_rewards -= np.mean(discounted_rewards)
+            discounted_rewards /= np.std(discounted_rewards)
+            gradient *= discounted_rewards
+
+            self.agent.net.zero_grad()
+            gradient.sum().backward()
+            self.agent.optimizer.step()
 
             # Check for convergence
-            if len(rewards) > 100:
-                if sum(rewards[-100:]) / 100 > 0.9:
+            if sum(all_rewards[-100:]) / 100 > 0.9:
                     converged = True
             
-            pass
+            self.env.render()
 
     
