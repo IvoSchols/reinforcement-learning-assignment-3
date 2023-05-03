@@ -38,11 +38,13 @@ class Round():
         all_rewards = []
         discounted_rewards = []
         while not converged:
+            state = self.env.reset()
             if True:
                 self.env.render()
 
             gradient = 0
-            state = self.env.reset()
+            
+            
 
             for m in range(M):
                 sample_rewards, sample_log_probs = self.sample_trace(state)

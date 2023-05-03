@@ -20,24 +20,22 @@ class Agent(ABC):
         # self.policy is the policy network -> pi(a|s)
         self.net = ReinforceModel(state_space, action_space).to(self.device)
 
-        match optimizer:
-            case 'adam':
+        if optimizer == 'adam':
                 self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
-            case 'rmsprop':
+        elif optimizer == 'rmsprop':
                 self.optimizer = optim.RMSprop(self.net.parameters(), lr=self.learning_rate)
-            case 'sgd':
+        elif optimizer == 'sgd':
                 self.optimizer = optim.SGD(self.net.parameters(), lr=self.learning_rate)
-            case other:
+        else:
                 self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
         
-        match lossFunction:
-            case 'huber':
+        if lossFunction == 'huber':
                 self.lossFunction = nn.SmoothL1Loss()
-            case 'mse':
+        elif lossFunction == 'mse':
                 self.lossFunction = nn.MSELoss()
-            case 'crossentropy':
+        elif lossFunction == 'crossentropy':
                 self.lossFunction = nn.CrossEntropyLoss()
-            case other:
+        else:
                 self.lossFunction = nn.SmoothL1Loss()
    
 
