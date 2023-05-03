@@ -21,22 +21,22 @@ class Agent(ABC):
         self.net = ReinforceModel(state_space, action_space).to(self.device)
 
         if optimizer == 'adam':
-                self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
+            self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
         elif optimizer == 'rmsprop':
-                self.optimizer = optim.RMSprop(self.net.parameters(), lr=self.learning_rate)
+            self.optimizer = optim.RMSprop(self.net.parameters(), lr=self.learning_rate)
         elif optimizer == 'sgd':
-                self.optimizer = optim.SGD(self.net.parameters(), lr=self.learning_rate)
+            self.optimizer = optim.SGD(self.net.parameters(), lr=self.learning_rate)
         else:
-                self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
+            self.optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
         
         if lossFunction == 'huber':
-                self.lossFunction = nn.SmoothL1Loss()
+            self.lossFunction = nn.SmoothL1Loss()
         elif lossFunction == 'mse':
-                self.lossFunction = nn.MSELoss()
+            self.lossFunction = nn.MSELoss()
         elif lossFunction == 'crossentropy':
-                self.lossFunction = nn.CrossEntropyLoss()
+            self.lossFunction = nn.CrossEntropyLoss()
         else:
-                self.lossFunction = nn.SmoothL1Loss()
+            self.lossFunction = nn.SmoothL1Loss()
    
 
 
