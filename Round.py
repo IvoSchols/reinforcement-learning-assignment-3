@@ -1,6 +1,7 @@
 
 import numpy as np
 from BaseAgent import Agent
+from ReinforceAgent import ReinforceAgent
 from catch import Catch
 
 
@@ -32,7 +33,7 @@ class Round():
         M = 1000 # Number of traces generated for Monte Carlo
         eta = 1 # Learning rate
 
-        self.agent.net.randomize() # Randomize weights
+        # self.agent.net.randomize() # Randomize weights -> By default pytorch uses LeCun initialization (random from normal distr)
         converged = False
         all_rewards = []
         discounted_rewards = []
@@ -71,6 +72,15 @@ class Round():
             if sum(all_rewards[-100:]) / 100 > 0.9:
                     converged = True
             
-            self.env.render()
+            print(sum(all_rewards[-100:]) / 100)
 
+        return all_rewards
+
+
+if __name__ == "__main__":
+    env = Catch()
+    agent = ReinforceAgent(env, 'cpu', 'adam', 'huber', state_space=98, action_space=env.action_space.n)
+    round = Round(agent, env)
+    round.run()
+    
     

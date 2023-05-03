@@ -4,11 +4,11 @@ import torch
 import numpy as np
 import torch.optim as optim
 
-from AgentNetwork import PolicyModel
+from AgentNetwork import ReinforceModel
 
 
 class Agent(ABC):
-    def __init__(self, env, device, optimizer='adam', lossFunction='huber', state_space= 98): #98 for 7x7 grid
+    def __init__(self, env, device, optimizer='adam', lossFunction='huber', state_space= 98, action_space=3): #98 for 7x7 grid
         self.env = env
         self.device = device
         self.learning_rate = 1e-4
@@ -18,7 +18,7 @@ class Agent(ABC):
         self.beta = 0.3        # Determines chance of curiosity\
 
         # self.policy is the policy network -> pi(a|s)
-        self.net = PolicyModel().to(self.device)
+        self.net = ReinforceModel(state_space, action_space).to(self.device)
 
         match optimizer:
             case 'adam':
