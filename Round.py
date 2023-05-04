@@ -21,7 +21,8 @@ class Round():
         done = False
         while not done:# and len(rewards) < steps:
             state = torch.tensor(state).flatten().to(self.device)
-            action_probabilities = self.agent.select_action(state)
+            logits = self.agent.select_action(state)
+            action_probabilities = torch.softmax(logits, dim=0)
             action_distribution = Categorical(action_probabilities)
 
             action = action_distribution.sample()
@@ -34,8 +35,7 @@ class Round():
             state = next_state
 
         return rewards, log_probs
-
-
+    
 
     def run(self):
         M = 1000 # Number of traces generated for Monte Carlo
@@ -55,14 +55,14 @@ class Round():
                 sample_rewards, sample_log_probs = self.sample_trace(state)
                 rewards.append(sum(sample_rewards))
 
-                R = 0
+                discounted_return = 0
                 
                 for i in reversed(range(len(sample_rewards))):
-                    R = sample_rewards[i] + gamma * R
-                    gradient += R * sample_log_probs[i]
+                    discounted_return = sample_rewards[i] + gamma * discounted_return
+                    gradient += discounted_return * sample_log_probs[i]
                 
   
-            loss = -1 * (gradient / M) * eta
+            loss = -1 * gradient * eta
             self.agent.optimizer.zero_grad()
             loss.backward()
             self.agent.optimizer.step()
