@@ -1,28 +1,36 @@
 
 import numpy as np
+import torch
+
 from BaseAgent import Agent
 from ReinforceAgent import ReinforceAgent
 from catch import Catch
-
+from torch.distributions import Categorical
 
 class Round():
 
-    def __init__(self, agent: Agent, env: Catch):
+    def __init__(self, agent: Agent, env: Catch, device):
         self.agent = agent # TODO: mount to GPU here or in agent?
         self.env = env
+        self.device = device
 
+    # Generate a full monte carlo trace
     def sample_trace(self, state):
-        states = [state]
-        actions = []
         rewards = []
         log_probs = []
         done = False
+        while not done:# and len(rewards) < steps:
+            state = torch.tensor(state).flatten().to(self.device)
+            action_probabilities = self.agent.select_action(state)
+            action_distribution = Categorical(action_probabilities)
 
-        while not done:
-            action, log_prob = self.agent.select_action(state)
-            next_state, reward, done, _ = self.env.step(action)
-            rewards.append(reward)
+            action = action_distribution.sample()
+            log_prob = action_distribution.log_prob(action)
             log_probs.append(log_prob)
+
+
+            next_state, reward, done, _ = self.env.step(action.item())
+            rewards.append(reward)
             state = next_state
 
         return rewards, log_probs
@@ -31,56 +39,54 @@ class Round():
 
     def run(self):
         M = 1000 # Number of traces generated for Monte Carlo
-        eta = 1 # Learning rate
+        gamma = 0.99 # Discount factor
+        eta = 0.01 # Learning rate
 
         # self.agent.net.randomize() # Randomize weights -> By default pytorch uses LeCun initialization (random from normal distr)
         converged = False
-        all_rewards = []
-        discounted_rewards = []
+
         while not converged:
-            if True:
-                self.env.render()
-
             gradient = 0
-            state = self.env.reset()
+            rewards = []
 
-            for m in range(M):
+
+            for _ in range(M):
+                state = self.env.reset()
                 sample_rewards, sample_log_probs = self.sample_trace(state)
-                all_rewards.append(sum(sample_rewards))
+                rewards.append(sum(sample_rewards))
+
+                R = 0
                 
-
-                cumultative_reward = 0
-
                 for i in reversed(range(len(sample_rewards))):
-                    cumultative_reward = cumultative_reward * self.agent.gamma + sample_rewards[i]
-                    log_probs = sample_log_probs[i]
-                    gradient += cumultative_reward * log_probs
+                    R = sample_rewards[i] + gamma * R
+                    gradient += R * sample_log_probs[i]
                 
-                discounted_rewards.append(cumultative_reward)
-
-            # Update weights
-            discounted_rewards = np.array(discounted_rewards)
-            discounted_rewards -= np.mean(discounted_rewards)
-            discounted_rewards /= np.std(discounted_rewards)
-            gradient *= discounted_rewards
-
-            self.agent.net.zero_grad()
-            gradient.sum().backward()
+  
+            loss = -1 * (gradient / M) * eta
+            self.agent.optimizer.zero_grad()
+            loss.backward()
             self.agent.optimizer.step()
 
             # Check for convergence
-            if sum(all_rewards[-100:]) / 100 > 0.9:
+            skill = sum(sample_rewards) / len(sample_rewards)
+            if skill > 0.9:
                     converged = True
             
-            print(sum(all_rewards[-100:]) / 100)
+            print(skill)
 
-        return all_rewards
+            if skill > 0.6:
+                self.env.render()
+
+
+        return rewards
 
 
 if __name__ == "__main__":
     env = Catch()
-    agent = ReinforceAgent(env, 'cpu', 'adam', 'huber', state_space=98, action_space=env.action_space.n)
-    round = Round(agent, env)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
+    agent = ReinforceAgent(env, device, 'adam', 'huber', np.prod(env.observation_space.shape), env.action_space.n)
+    round = Round(agent, env, device)
     round.run()
     
     

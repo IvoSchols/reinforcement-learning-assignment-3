@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 
@@ -7,13 +8,16 @@ class ReinforceModel(nn.Module):
     def __init__(self,state_space, action_space):
         super(ReinforceModel,self).__init__()
 
-        self.layer1 = nn.Linear(state_space,64) # 98 for 7x7
-        self.layer2 = nn.Linear(64,action_space) #3 actions
+        # State space is 98 for 7x7
+        # Action spaec is 3
+        self.layers = nn.Sequential(
+            nn.Linear(state_space,128), 
+            nn.ReLU(), 
+            nn.Linear(128,action_space),
+            nn.Softmax(dim=0))
+
         
-    def forward(self, state):
-        x = torch.relu(self.layer1(state))
-        x = self.layer2(x)
-        actions = torch.softmax(x)
-        action = torch.multinomial(actions,1)
-        log_prob = torch.log(actions[action])
-        return action, log_prob
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
