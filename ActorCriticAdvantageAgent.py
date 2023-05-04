@@ -32,8 +32,8 @@ def compute_advantages(traces, model, gamma=0.99):
     advantages = []
     for t in range(len(traces)):
         state, _, reward, next_state, done = traces[t]
-        state_tensor = torch.FloatTensor(state).unsqueeze(0)
-        next_state_tensor = torch.FloatTensor(next_state).unsqueeze(0)
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
         
         _, state_value = model(state_tensor)
         _, next_state_value = model(next_state_tensor)
@@ -55,7 +55,7 @@ def update_policy(model, optimizer, traces, advantages):
 
     for t, advantage in zip(traces, advantages):
         state, action, _, _, _ = t
-        state_tensor = torch.FloatTensor(state).unsqueeze(0)
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         action_probs, _ = model(state_tensor)
 
         critic_loss = advantage.pow(2)
