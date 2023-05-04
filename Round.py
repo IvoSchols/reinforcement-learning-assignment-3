@@ -21,8 +21,8 @@ class Round():
         done = False
         while not done:# and len(rewards) < steps:
             state = torch.tensor(state).flatten().to(self.device)
-            logits = self.agent.select_action(state)
-            action_probabilities = torch.softmax(logits, dim=0)
+            action_probabilities = self.agent.select_action(state)
+            # action_probabilities = torch.softmax(logits, dim=0)
             action_distribution = Categorical(action_probabilities)
 
             action = action_distribution.sample()
