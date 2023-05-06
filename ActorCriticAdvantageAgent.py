@@ -14,6 +14,7 @@ class ActorCriticAdvantageAgent:
         self.num_inputs = np.prod(env.observation_space.shape)
         self.num_actions = env.action_space.n
         self.gamma = gamma
+        self.learning_rate = learning_rate
         self.entropy_weight = entropy_weight
 
         self.model = ActorCritic(self.num_inputs, self.num_actions, hidden_size).to(device)

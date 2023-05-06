@@ -13,6 +13,7 @@ class ActorCriticFullAgent:
         self.num_inputs = np.prod(env.observation_space.shape)
         self.num_actions = env.action_space.n
         self.gamma = gamma
+        self.learning_rate = learning_rate
         self.entropy_weight = entropy_weight
         self.n_steps = n_steps
 
