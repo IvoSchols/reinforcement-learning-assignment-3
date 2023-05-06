@@ -1,107 +1,124 @@
-import torch.nn as nn
 import torch
-from ActorCriticModel import ActorCritic
+import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+from ActorCriticModel import ActorCritic
 from catch import Catch
+import ray
 
+class ActorCriticFullAgent:
+    def __init__(self, env, device, hidden_size=64, learning_rate=0.001, gamma=0.99, entropy_weight=0.01, n_steps=5):
+        self.env = env
+        self.device = device
+        self.num_inputs = np.prod(env.observation_space.shape)
+        self.num_actions = env.action_space.n
+        self.gamma = gamma
+        self.entropy_weight = entropy_weight
+        self.n_steps = n_steps
 
-def collect_traces(env, model, num_traces, render):
-    traces = []
-    state = env.reset()
+        self.model = ActorCritic(self.num_inputs, self.num_actions, hidden_size).to(device)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
-    for _ in range(num_traces):# n traces
-        done = False
-        while not done:#one trace
-            if render:
-                env.render()
+    def collect_traces(self, num_traces):
+        traces = []
+        state = self.env.reset()
+
+        for _ in range(num_traces):
+            done = False
+            while not done:
+                state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+                action_probs, _ = self.model(state_tensor)
+                action = torch.multinomial(action_probs, 1).item()
+
+                next_state, reward, done, _ = self.env.step(action)
+                traces.append((state, action, reward, next_state, done))
+
+                if done:
+                    state = self.env.reset()
+                else:
+                    state = next_state
+
+        return traces
+
+    def compute_advantages(self, traces):
+        advantages = []
+        for t in range(len(traces)):
+            state, _, _, _, done = traces[t]
             state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-            action_probs, _ = model(state_tensor)
-            action = torch.multinomial(action_probs, 1).item()
-
-            next_state, reward, done, _ = env.step(action)
-            traces.append((state, action, reward, next_state, done))
-
-            if done:
-                state = env.reset()
+            _, state_value = self.model(state_tensor)
+            
+            n_step_reward = 0
+            for i in range(self.n_steps):
+                if t + i < len(traces):
+                    _, _, step_reward, _, step_done = traces[t + i]
+                    n_step_reward += (self.gamma ** i) * step_reward
+                    if step_done:
+                        break
+            
+            if not done and t + self.n_steps < len(traces):
+                _, _, _, next_state, _ = traces[t + self.n_steps]
+                next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+                _, next_state_value = self.model(next_state_tensor)
+                n_step_target = n_step_reward + (self.gamma ** self.n_steps) * next_state_value
             else:
-                state = next_state
-    
-    return traces
+                n_step_target = n_step_reward
 
-def compute_advantages(traces, model, n_steps=5, gamma=0.99):
-    advantages = []
-    for t in range(len(traces)):
-        state, _, _, _, done = traces[t]
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-        _, state_value = model(state_tensor)
+            advantage = n_step_target - state_value
+            advantages.append(advantage)
+
+        return advantages
+
+    def update_policy(self, traces, advantages):
+        actor_losses = []
+        critic_losses = []
+        entropy_losses = []
+
+        for t, advantage in zip(traces, advantages):
+            state, action, _, _, _ = t
+            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            action_probs, _ = self.model(state_tensor)
+
+            critic_loss = advantage.pow(2)
+            critic_losses.append(critic_loss)
+
+            actor_loss = -torch.log(action_probs[0, action]) * advantage.detach()
+            actor_losses.append(actor_loss)
+
+            entropy_loss = -torch.sum(action_probs * torch.log(action_probs), dim=1)
+            entropy_losses.append(entropy_loss)
+
+        loss = torch.stack(actor_losses).sum() + torch.stack(critic_losses).sum() - self.entropy_weight * torch.stack(entropy_losses).sum()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+    def get_winrate(self,traces):
+        total_games = 0
+        games_won = 0
+        for trace in traces:
+            _, _, reward, _, _ = trace
+            total_games += (reward != 0)
+            games_won += (reward == 1)
         
-        n_step_reward = 0
-        for i in range(n_steps):
-            if t + i < len(traces):
-                _, _, step_reward, _, step_done = traces[t + i]
-                n_step_reward += (gamma ** i) * step_reward
-                if step_done:
-                    break
-        
-        if not done and t + n_steps < len(traces):
-            _, _, _, next_state, _ = traces[t + n_steps]
-            next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
-            _, next_state_value = model(next_state_tensor)
-            n_step_target = n_step_reward + (gamma ** n_steps) * next_state_value
-        else:
-            n_step_target = n_step_reward
+        return games_won/total_games
 
-        advantage = n_step_target - state_value
-        advantages.append(advantage)
-
-    return advantages
-
-
-
-
-def update_policy(model, optimizer, traces, advantages, entropy_weight=0.01):
-    actor_losses = []
-    critic_losses = []
-    entropy_losses = []
-
-    for t, advantage in zip(traces, advantages):
-        state, action, _, _, _ = t
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-        action_probs, _ = model(state_tensor)
-
-        critic_loss = advantage.pow(2)
-        critic_losses.append(critic_loss)
-
-        actor_loss = -torch.log(action_probs[0, action]) * advantage.detach()
-        actor_losses.append(actor_loss)
-
-        # Compute entropy loss
-        entropy_loss = -torch.sum(action_probs * torch.log(action_probs), dim=1)
-        entropy_losses.append(entropy_loss)
-
-    loss = torch.stack(actor_losses).sum() + torch.stack(critic_losses).sum() - entropy_weight * torch.stack(entropy_losses).sum()
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-def train(env, model, optimizer, num_episodes, num_traces, entropy_weight=0.01):
-    render = False
-    for episode in range(num_episodes):
-        traces = collect_traces(env, model, num_traces, render)
-        advantages = compute_advantages(traces, model)
-        update_policy(model, optimizer, traces, advantages)
-        print(f'Episode {episode + 1}, Trace len: {len(traces)}')
-        if episode > 500:
-            render = True
+    @ray.remote(num_cpus=1)
+    def train(self, num_episodes, num_traces):
+        win_rates = []
+        for episode in range(num_episodes):
+            traces = self.collect_traces(num_traces)
+            advantages = self.compute_advantages(traces)
+            self.update_policy(traces, advantages)
+            print(f'Episode {episode + 1}, Trace len: {len(traces)}')
+            win_rates.append(self.get_winrate(traces))
+        return win_rates
 
 if __name__ == '__main__':
     env = Catch()
-    num_inputs = 98
-    num_actions = env.action_space.n
-    hidden_size = 128
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = ActorCritic(num_inputs, num_actions, hidden_size)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-    num_episodes = 1000
-    train(env, model, optimizer, num_episodes, 5)
+    num_episodes = 500
+    traces_per_episode = 5
+    agent = ActorCriticFullAgent(env, device)
+    win_rates = agent.train(num_episodes, traces_per_episode)
+    
