@@ -8,7 +8,6 @@ import numpy as np
 import ray
 import matplotlib
 import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
 import wandb
 
 @ray.remote
