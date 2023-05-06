@@ -48,7 +48,7 @@ def main():
     gamma = 0.99
     render = False
     
-    M = 50 # Number of traces generated for Monte Carlo
+    M = 10 # Number of traces generated for Monte Carlo
     converged = False
 
     while not converged:
@@ -74,6 +74,12 @@ def main():
             R = 0
             returns = deque()
             
+            # no normalization. high variance
+            # for r, log_prob in zip(reversed(rewards), reversed(log_probs)):
+            #     R = r + gamma * R
+            #     gradient += -log_prob * R
+
+
             for r in reversed(rewards):
                 R = r + gamma * R
                 returns.appendleft(R)
