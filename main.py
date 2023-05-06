@@ -3,6 +3,7 @@ import torch
 from ActorCriticAdvantageAgent import ActorCriticAdvantageAgent
 from ActorCriticBootstrapAgent import ActorCriticBootstrapAgent
 from ActorCriticFullAgent import ActorCriticFullAgent
+from Reinforce import ReinforceAgent
 
 import numpy as np
 import ray
@@ -77,30 +78,37 @@ if __name__ == '__main__':
         bootstrapAgent = ActorCriticBootstrapAgent(env, device, hidden_size, lr, gamma)
         advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, lr, gamma)
         fullAgent = ActorCriticFullAgent(env, device, hidden_size, lr, gamma)
+        reinforceAgent = ReinforceAgent(env, device, hidden_size, lr, gamma)
         
         bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping", "lr tune")
         advantageAgent_win_rates = start_experiment.remote(advantageAgent, num_repeats, num_episodes, traces_per_episode, "AC with basline subtraction", "lr tune")
         fullAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping and basline subtraction", "lr tune")
+        reinforceAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "Reinforce", "lr tune")
+
 
         futures.append(bootstrapAgent_win_rates)
         futures.append(advantageAgent_win_rates)
         futures.append(fullAgent_win_rates)
+        futures.append(reinforceAgent_win_rates)
 
 
     for gamma_to_test in gamma_to_test:
         bootstrapAgent = ActorCriticBootstrapAgent(env, device, hidden_size, learning_rate, gamma_to_test)
         advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma_to_test)
         fullAgent = ActorCriticFullAgent(env, device, hidden_size, learning_rate, gamma_to_test)
+        reinforceAgent = ReinforceAgent(env, device, hidden_size, learning_rate, gamma_to_test)
         
+
         bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping", "gamma tune")
         advantageAgent_win_rates = start_experiment.remote(advantageAgent, num_repeats, num_episodes, traces_per_episode, "AC with basline subtraction", "gamma tune")
         fullAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping and basline subtraction", "gamma tune")
+        reinforceAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "Reinforce", "lr tune")
+
 
         futures.append(bootstrapAgent_win_rates)
         futures.append(advantageAgent_win_rates)
         futures.append(fullAgent_win_rates)
+        futures.append(reinforceAgent_win_rates)
+
 
     results = ray.get(futures)
-    # plotResults(results, "Gamma difference")
-
-
