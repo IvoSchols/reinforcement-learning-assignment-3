@@ -41,7 +41,7 @@ def select_action(state):
     dist = Categorical(action_probs)
     action = dist.sample()
     log_prob = dist.log_prob(action)
-    return action.item(), log_prob
+    return action.item(), log_prob, action_probs
 
 
 def main():
@@ -51,22 +51,26 @@ def main():
     M = 10 # Number of traces generated for Monte Carlo
     converged = False
 
+    entropy_weight = 0.01
+
     while not converged:
         rewards = deque()
         log_probs = []
+        action_probs = []
         
         gradient = 0
-
+        entropy_loss = 0
         # Generate M traces
         for _ in range(M):
             state = env.reset()
             done = False
             # Sample a trace
             while not done:
-                action, log_prob = select_action(state.flatten())
+                action, log_prob, action_prob = select_action(state.flatten())
                 state, reward, done, _ = env.step(action)
                 rewards.append(reward)
                 log_probs.append(log_prob)
+                action_probs.append(action_prob)
                 if render:
                     env.render()
 
@@ -79,7 +83,7 @@ def main():
             #     R = r + gamma * R
             #     gradient += -log_prob * R
 
-
+    
             for r in reversed(rewards):
                 R = r + gamma * R
                 returns.appendleft(R)
@@ -89,6 +93,13 @@ def main():
             
             for log_prob, R in zip(log_probs, normalized_returns):
                 gradient += -log_prob * R
+
+            for action_prob in action_probs:
+                entropy = -(action_prob * action_prob.log()).sum()
+                entropy_loss += entropy
+
+
+        gradient = gradient + entropy_weight * entropy_loss
 
         optimizer.zero_grad()
         
@@ -100,10 +111,10 @@ def main():
 
         print('Sum reward:' + str(sum_reward))
         
-        if sum_reward > 0:
+        if sum_reward > 9*M:
             render = True
-
-        if sum_reward > 100:
+        
+        if sum_reward > 10*M:
             converged = True
 
 

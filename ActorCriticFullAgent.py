@@ -59,8 +59,9 @@ def compute_advantages(traces, model, n_steps=5, gamma=0.99):
 
 
 
-def update_policy(model, optimizer, traces, returns):
+def update_policy(model, optimizer, traces, returns, entropy_weight=0.01):
     actor_losses = []
+    entropy_losses = []
 
     for t, ret in zip(traces, returns):
         state, action, _, _, _ = t
@@ -70,17 +71,22 @@ def update_policy(model, optimizer, traces, returns):
         actor_loss = -torch.log(action_probs[0, action]) * ret
         actor_losses.append(actor_loss)
 
-    loss = torch.stack(actor_losses).sum()
+        # Compute entropy loss
+        entropy_loss = -torch.sum(action_probs * torch.log(action_probs), dim=1)
+        entropy_losses.append(entropy_loss)
+
+    # Combine actor and entropy losses
+    loss = torch.stack(actor_losses).sum() - entropy_weight * torch.stack(entropy_losses).sum()
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-def train(env, model, optimizer, num_episodes, num_traces):
+def train(env, model, optimizer, num_episodes, num_traces, entropy_weight=0.01):
     render = False
     for episode in range(num_episodes):
         traces = collect_traces(env, model, num_traces, render)
         returns = compute_advantages(traces, model)
-        update_policy(model, optimizer, traces, returns)
+        update_policy(model, optimizer, traces, returns, entropy_weight)
         print(f'Episode {episode + 1}, Trace len: {len(traces)}')
         if episode > 500:
             render = True
