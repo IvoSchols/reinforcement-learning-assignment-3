@@ -7,7 +7,7 @@ from ActorCriticFullAgent import ActorCriticFullAgent
 import numpy as np
 import ray
 
-
+@ray.remote
 def start_experiment(agent, num_repeats, num_episodes, num_traces):
     futures = [agent.train.remote(agent, num_episodes, num_traces) for i in range(num_repeats)]
     all_winrates = ray.get(futures) 
@@ -29,7 +29,14 @@ if __name__ == '__main__':
     learning_rate = 0.001
     gamma = 0.99
 
-    agent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
-    win_rates = start_experiment(agent, num_repeats, num_episodes, traces_per_episode)
-    print(win_rates)
+    bootstrapAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+    advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+    fullAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+    
+    bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent, num_repeats, num_episodes, traces_per_episode)
+    advantageAgent_win_rates = start_experiment.remote(advantageAgent, num_repeats, num_episodes, traces_per_episode)
+    fullAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode)
+    
+    results = ray.get([bootstrapAgent_win_rates, advantageAgent_win_rates, fullAgent_win_rates])
+    print(results)
 
