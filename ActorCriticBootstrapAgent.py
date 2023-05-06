@@ -38,7 +38,7 @@ def compute_returns(traces, n_steps=5, gamma=0.99):
             if done:
                 break
 
-        returns.append(n_step_return)
+        returns.append(torch.tensor(n_step_return, dtype=torch.float32))
     
     return returns
 
@@ -46,12 +46,16 @@ def compute_returns(traces, n_steps=5, gamma=0.99):
 
 def update_policy(model, optimizer, traces, returns, entropy_weight=0.01):
     actor_losses = []
+    critic_losses = []
     entropy_losses = []
 
     for t, ret in zip(traces, returns):
         state, action, _, _, _ = t
         state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         action_probs, _ = model(state_tensor)
+
+        critic_loss = ret.pow(2)
+        critic_losses.append(critic_loss)
 
         actor_loss = -torch.log(action_probs[0, action]) * ret
         actor_losses.append(actor_loss)
@@ -60,8 +64,7 @@ def update_policy(model, optimizer, traces, returns, entropy_weight=0.01):
         entropy_loss = -torch.sum(action_probs * torch.log(action_probs), dim=1)
         entropy_losses.append(entropy_loss)
 
-    # Combine actor and entropy losses
-    loss = torch.stack(actor_losses).sum() - entropy_weight * torch.stack(entropy_losses).sum()
+    loss = torch.stack(actor_losses).sum() + torch.stack(critic_losses).sum() - entropy_weight * torch.stack(entropy_losses).sum()
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
