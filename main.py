@@ -21,26 +21,35 @@ if __name__ == '__main__':
     env = Catch()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     device = "cpu"
-    num_repeats = 15
-    num_episodes = 500
+    num_repeats = 3
+    num_episodes = 10
     traces_per_episode = 5
 
     hidden_size = 64
-    learning_rate = 0.001
-    gamma = 0.99
-
-    bootstrapAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
-    advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
-    fullAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+    learning_rates = [0.01, 0.001, 0.0001]
     
-    bootstrapAgent_ref = ray.put(bootstrapAgent)
-    advantageAgent_ref = ray.put(advantageAgent)
-    fullAgent_ref = ray.put(fullAgent)
+    gammas = [0.9, 0.99, 0.999]
 
-    bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent_ref, num_repeats, num_episodes, traces_per_episode)
-    advantageAgent_win_rates = start_experiment.remote(advantageAgent_ref, num_repeats, num_episodes, traces_per_episode)
-    fullAgent_win_rates = start_experiment.remote(fullAgent_ref, num_repeats, num_episodes, traces_per_episode)
+    futures = []
+    for learning_rate in learning_rates:
+        for gamma in gammas:
+            bootstrapAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+            advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+            fullAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
+            
+            bootstrapAgent_ref = ray.put(bootstrapAgent)
+            advantageAgent_ref = ray.put(advantageAgent)
+            fullAgent_ref = ray.put(fullAgent)
+
+            bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent_ref, num_repeats, num_episodes, traces_per_episode)
+            advantageAgent_win_rates = start_experiment.remote(advantageAgent_ref, num_repeats, num_episodes, traces_per_episode)
+            fullAgent_win_rates = start_experiment.remote(fullAgent_ref, num_repeats, num_episodes, traces_per_episode)
+
+            futures.append(bootstrapAgent_win_rates)
+            futures.append(advantageAgent_win_rates)
+            futures.append(fullAgent_win_rates)
+
     
-    results = ray.get([bootstrapAgent_win_rates, advantageAgent_win_rates, fullAgent_win_rates])
+    results = ray.get(futures)
     print(results)
 
