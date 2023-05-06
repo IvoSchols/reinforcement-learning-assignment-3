@@ -1,21 +1,24 @@
 import torch
 import torch.nn as nn
 
-class ActroCriticModel(nn.Module):
-    
-    def __init__(self, num_inputs):
-        self.hidden_size = 64
-        self.critic_linear1 = nn.Linear(num_inputs, self.hidden_size)
-        self.critic_linear2 = nn.Linear(self.hidden_size, 1)
-
-        self.actor_linear1 = nn.Linear(num_inputs, )
-        self.actor_linear2 = nn.Linear(self.hidden_size, 3)
-    
-    def forward(self, state):
-        value = torch.relu(self.critic_linear1(state))
-        value = self.critic_linear2(value)
+class ActorCritic(nn.Module):
+    def __init__(self, num_inputs, num_actions, hidden_size):
+        super(ActorCritic, self).__init__()
         
-        policy_dist = torch.relu(self.actor_linear1(state))
-        policy_dist = torch.softmax(self.actor_linear2(policy_dist), dim=1)
+        self.actor = nn.Sequential(
+            nn.Linear(num_inputs, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_actions),
+            nn.Softmax(dim=1)
+        )
+        
+        self.critic = nn.Sequential(
+            nn.Linear(num_inputs, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, 1)
+        )
 
-        return value, policy_dist
+    def forward(self, x):
+        action_probs = self.actor(x.flatten(1))
+        value = self.critic(x.flatten(1))
+        return action_probs, value
