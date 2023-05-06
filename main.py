@@ -1,4 +1,3 @@
-from experimenter import Experimenter
 from catch import Catch
 import torch
 from ActorCriticAdvantageAgent import ActorCriticAdvantageAgent
@@ -18,11 +17,11 @@ def start_experiment(agent, num_repeats, num_episodes, num_traces):
 
 
 if __name__ == '__main__':
-    ray.init()
+    ray.init(num_cpus=8)
     env = Catch()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     device = "cpu"
-    num_repeats = 3
+    num_repeats = 15
     num_episodes = 500
     traces_per_episode = 5
 
