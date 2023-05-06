@@ -33,9 +33,13 @@ if __name__ == '__main__':
     advantageAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
     fullAgent = ActorCriticAdvantageAgent(env, device, hidden_size, learning_rate, gamma)
     
-    bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent, num_repeats, num_episodes, traces_per_episode)
-    advantageAgent_win_rates = start_experiment.remote(advantageAgent, num_repeats, num_episodes, traces_per_episode)
-    fullAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode)
+    bootstrapAgent_ref = ray.put(bootstrapAgent)
+    advantageAgent_ref = ray.put(advantageAgent)
+    fullAgent_ref = ray.put(fullAgent)
+
+    bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent_ref, num_repeats, num_episodes, traces_per_episode)
+    advantageAgent_win_rates = start_experiment.remote(advantageAgent_ref, num_repeats, num_episodes, traces_per_episode)
+    fullAgent_win_rates = start_experiment.remote(fullAgent_ref, num_repeats, num_episodes, traces_per_episode)
     
     results = ray.get([bootstrapAgent_win_rates, advantageAgent_win_rates, fullAgent_win_rates])
     print(results)
