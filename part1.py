@@ -112,3 +112,5 @@ if __name__ == '__main__':
 
 
     results = ray.get(futures)
+
+    wandb.finish()
