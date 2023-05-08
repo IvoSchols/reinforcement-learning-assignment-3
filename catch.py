@@ -10,7 +10,7 @@ Extended from Catch environment in Behavioural Suite: https://arxiv.org/pdf/1908
 """
 
 import matplotlib
-matplotlib.use('Agg') #'Qt5Agg') # 'TkAgg'
+matplotlib.use('TkAgg') #'Qt5Agg') # 'TkAgg'
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np

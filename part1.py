@@ -102,7 +102,7 @@ if __name__ == '__main__':
         bootstrapAgent_win_rates = start_experiment.remote(bootstrapAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping", "gamma tune")
         advantageAgent_win_rates = start_experiment.remote(advantageAgent, num_repeats, num_episodes, traces_per_episode, "AC with basline subtraction", "gamma tune")
         fullAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "AC with bootstrapping and basline subtraction", "gamma tune")
-        reinforceAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "Reinforce", "lr tune")
+        reinforceAgent_win_rates = start_experiment.remote(fullAgent, num_repeats, num_episodes, traces_per_episode, "Reinforce", "gamma tune")
 
 
         futures.append(bootstrapAgent_win_rates)
