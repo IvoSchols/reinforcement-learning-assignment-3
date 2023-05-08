@@ -1,6 +1,8 @@
 # reinforcement-learning-assignment-3
 We used ray to paralelize the the individual runs of the experiments.
-Python version used is 3.9
+Python version used is 3.9.
+We also connected our results to wandb.
+
 
 Here are commands to run the experiments:
 
